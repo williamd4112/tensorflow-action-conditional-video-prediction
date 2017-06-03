@@ -36,12 +36,15 @@ class ActionConditionalVideoPredictionModel(object):
         with tf.variable_scope('loss') as scope:
             t = self.inputs['x_t_1'] / 255.0
             self.loss = tf.reduce_mean(tf.nn.l2_loss(self.output - t, name='l2'))
+            tf.summary.scalar("loss", self.loss)
 
     def _create_optimizer(self):
         with tf.variable_scope('train') as scope:
             lr = self.optimizer_args['lr']
             self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, name='optimizer')
-        self.train = self.optimizer.minimize(self.loss)
+            gvs = self.optimizer.compute_gradients(self.loss)
+            capped_gvs = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in gvs]
+            self.train = self.optimizer.apply_gradients(capped_gvs)
 
     def _create_encoder(self, x):
         # x: input image
@@ -50,12 +53,12 @@ class ActionConditionalVideoPredictionModel(object):
         conv2 = Conv2D(conv1, [6, 6], 64, 2, 'SAME', 'conv2')
         conv3 = Conv2D(conv2, [6, 6], 64, 2, 'SAME', 'conv3')
         fc1 = FC(conv3, 1024, 'enc-fc1')
-        fc2 = FC(fc1, 2048, 'enc-fc2')
+        fc2 = FC(fc1, 2048, 'enc-fc2', initializer=tf.random_uniform_initializer(minval=-1.0, maxval=1.0))
         return fc2
 
     def _create_action_embedding(self, act):
         act = tf.cast(act, tf.float32)
-        fc1 = FC(act, 2048, 'act')
+        fc1 = FC(act, 2048, 'act', initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
         return fc1
     
     def _create_decoder(self, encode, act_embed):

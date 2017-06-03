@@ -18,7 +18,7 @@ def Conv2D(x, filter_shape, out_dim, strides, padding, name):
         l = tf.nn.relu(l) 
     return l
 
-def FC(x, out_dim, name):
+def FC(x, out_dim, name, initializer=tf.contrib.layers.xavier_initializer()):
     # x: input tensor (float32)[n, in_dim]
     # out_dim: output channels (int)
     # name: variable scope (str)
@@ -26,7 +26,7 @@ def FC(x, out_dim, name):
     x = tf.contrib.layers.flatten(x)
     with tf.variable_scope(name) as scope:
         in_dim = x.get_shape()[-1]
-        w = tf.get_variable('w', shape=[in_dim, out_dim], initializer=tf.contrib.layers.xavier_initializer())
+        w = tf.get_variable('w', shape=[in_dim, out_dim], initializer=initializer)
         b = tf.get_variable('b', shape=[out_dim], initializer=tf.constant_initializer(0.0))
         l = tf.add(tf.matmul(x, w), b)
         l = tf.nn.relu(l)

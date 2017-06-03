@@ -31,9 +31,9 @@ def _read_and_decode(directory, s_t_shape, x_t_1_shape):
     return s_t, a_t, x_t_1
 
 class Dataset(object):
-    def __init__(self, directory, batch_size=4, s_t_shape=[84, 84, 12], x_t_1_shape=[84, 84, 3]):
+    def __init__(self, directory, mean_path, batch_size=32, s_t_shape=[84, 84, 12], x_t_1_shape=[84, 84, 3]):
         # Load image mean
-        mean = np.load(os.path.join(directory, 'mean.npy'))
+        mean = np.load(os.path.join(mean_path))
         
         # Prepare data flow
         s_t, a_t, x_t_1 = _read_and_decode(directory, 
@@ -50,8 +50,5 @@ class Dataset(object):
         return {'s_t': self.s_t_batch,
                 'a_t': self.a_t_batch,
                 'x_t_1': self.x_t_1_batch}
-    
-    def start(self, sess, coord):
-        return tf.train.start_queue_runners(sess=sess, coord=coord)
-        
+            
            
