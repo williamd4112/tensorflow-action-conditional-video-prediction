@@ -17,7 +17,7 @@ def main(args):
     # Create dataset
     logging.info('Create data flow from %s' % args.train)
     train_data = Dataset(args.train)
-
+    
     # Create model
     logging.info('Create model for training [lr = %f, epochs = %d, batch_size = %d]' % (args.lr, args.epoch, args.batch_size) )
     model = ActionConditionalVideoPredictionModel(train_data(), 
@@ -54,8 +54,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--train', help='training data directory', type=str, default='example')
     parser.add_argument('--lr', help='learning rate', type=float, default=0.001)
-    parser.add_argument('--epoch', help='epoch', type=int, default=3)
-    parser.add_argument('--batch_size', help='batch size', type=int, default=4)
+    parser.add_argument('--epoch', help='epoch', type=int, default=10)
+    parser.add_argument('--batch_size', help='batch size', type=int, default=32)
     args = parser.parse_args()
 
     main(args)
