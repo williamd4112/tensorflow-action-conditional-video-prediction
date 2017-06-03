@@ -32,28 +32,33 @@ class ActionConditionalVideoPredictionModel(object):
     def _create_output(self):
         self.output = self.decode
 
-    def _create_loss(self):  
-        with tf.variable_scope('loss') as scope:
+    def _create_loss(self): 
+        with tf.name_scope('loss') as scope:
             t = self.inputs['x_t_1'] / 255.0
             self.loss = tf.reduce_mean(tf.nn.l2_loss(self.output - t, name='l2'))
-            tf.summary.scalar("loss", self.loss)
+
+            tf.summary.scalar("loss", self.loss, collections=['train', 'test'])
 
     def _create_optimizer(self):
-        with tf.variable_scope('train') as scope:
+        with tf.name_scope('optimize') as scope:
+            self.global_step = tf.Variable(0, name='global_step', trainable=False)
             lr = self.optimizer_args['lr']
             self.optimizer = tf.train.AdamOptimizer(learning_rate=lr, name='optimizer')
-            gvs = self.optimizer.compute_gradients(self.loss)
-            capped_gvs = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in gvs]
-            self.train = self.optimizer.apply_gradients(capped_gvs)
+            grads_vars = self.optimizer.compute_gradients(self.loss)
+            grads_clip = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in (grads_vars)]
+            self.train = self.optimizer.apply_gradients(grads_clip, global_step=self.global_step)
 
     def _create_encoder(self, x):
         # x: input image
-        x = x / 255.0
-        conv1 = Conv2D(x, [6, 6], 64, 2, 'VALID', 'conv1')
+        x_normal = x / 255.0
+        conv1 = Conv2D(x_normal, [6, 6], 64, 2, 'VALID', 'conv1')
         conv2 = Conv2D(conv1, [6, 6], 64, 2, 'SAME', 'conv2')
         conv3 = Conv2D(conv2, [6, 6], 64, 2, 'SAME', 'conv3')
         fc1 = FC(conv3, 1024, 'enc-fc1')
         fc2 = FC(fc1, 2048, 'enc-fc2', initializer=tf.random_uniform_initializer(minval=-1.0, maxval=1.0))
+
+        tf.summary.image('s_t', x[:, :, :, -3:], collections=['train', 'test']) 
+
         return fc2
 
     def _create_action_embedding(self, act):
@@ -73,4 +78,7 @@ class ActionConditionalVideoPredictionModel(object):
         deconv1 = Deconv2D(dec, [6, 6], [batch_size, 20, 20, 64], 64, 2, 'SAME', 'deconv1')
         deconv2 = Deconv2D(deconv1, [6, 6], [batch_size, 40, 40, 64], 64, 2, 'SAME', 'deconv2')
         deconv3 = Deconv2D(deconv2, [6, 6], [batch_size, 84, 84, NUM_CHANNELS], 3, 2, 'VALID', 'deconv3')
+
+        tf.summary.image('x_t_1', deconv3, collections=['train', 'test']) 
+
         return deconv3
