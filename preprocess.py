@@ -44,9 +44,8 @@ if __name__ == '__main__':
     for path in tqdm(glob.glob(os.path.join(path, '*.tfrecords'))):
         reader = EpisodeReader(path)
         for s, a, x in (reader.read()):
-            for i in range(0, 12, 3):
-                mean += s[:,:,i:i+3]
-                n += 1
+            mean += s[:,:,-3:]
+            n += 1
     mean /= n
     np.save(sys.argv[2], mean)
  
