@@ -18,15 +18,13 @@ def main(args):
     with tf.Graph().as_default() as graph:
         # Create dataset
         logging.info('Create data flow from %s' % args.train)
-        train_data = Dataset(directory=args.train, mean_path=args.mean, batch_size=args.batch_size, num_threads=2)
-        #test_data = Dataset(directory=args.test, mean_path=args.mean, batch_size=args.test_batch_size, num_threads=1)
+        train_data = Dataset(directory=args.train, num_act=args.num_act, mean_path=args.mean, batch_size=args.batch_size, num_threads=1, capacity=10000)
+        #test_data = Dataset(directory=args.test, num_act=args.num_act, mean_path=args.mean, batch_size=args.test_batch_size, num_threads=1, capacity=100)
     
         # Create model
         logging.info('Create model for training [lr = %f, epochs = %d, batch_size = %d]' % (args.lr, args.epoch, args.batch_size) )
-        model = ActionConditionalVideoPredictionModel(train_data(), 
-                                                    optimizer_args={'lr': args.lr})
+        model = ActionConditionalVideoPredictionModel(inputs=train_data(), num_act=args.num_act, optimizer_args={'lr': args.lr})
         #test_model = ActionConditionalVideoPredictionModel(test_data(), is_train=False)
-
         # Create initializer
         init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         
@@ -60,7 +58,7 @@ def main(args):
                     sv.summary_computed(sess, train_summary)
                 else:
                     sess.run([train_op])
-                '''
+                '''      
                 if (epoch) % args.test_per_epoch == 0:
                     test_loss, test_summary, global_step = sess.run([test_model.loss, test_summary_op, global_step_var])
                     logging.info('Epoch %d: Testing L2 loss = %f' % (global_step, test_loss))
@@ -76,6 +74,7 @@ if __name__ == '__main__':
     parser.add_argument('--train', help='training data directory', type=str, default='example/train')
     parser.add_argument('--test', help='testing data directory', type=str, default='example/test')
     parser.add_argument('--mean', help='image mean path', type=str, default='example/mean.npy')
+    parser.add_argument('--num_act', help='num acts', type=int, required=True)
     parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
     parser.add_argument('--epoch', help='epoch', type=int, default=15000000)
     parser.add_argument('--show_per_epoch', help='epoch', type=int, default=1000)
