@@ -18,7 +18,7 @@ def main(args):
     with tf.Graph().as_default() as graph:
         # Create dataset
         logging.info('Create data flow from %s' % args.train)
-        train_data = Dataset(directory=args.train, num_act=args.num_act, mean_path=args.mean, batch_size=args.batch_size, num_threads=1, capacity=10000)
+        train_data = Dataset(directory=args.train, num_act=args.num_act, mean_path=args.mean, batch_size=args.batch_size, num_threads=4, capacity=10000)
         #test_data = Dataset(directory=args.test, num_act=args.num_act, mean_path=args.mean, batch_size=args.test_batch_size, num_threads=1, capacity=100)
     
         # Create model

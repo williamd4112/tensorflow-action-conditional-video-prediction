@@ -34,6 +34,7 @@ class Dataset(object):
     def __init__(self, directory, num_act, mean_path, num_threads=1, capacity=1e5, batch_size=32, scale=(1.0/255.0), s_t_shape=[84, 84, 12], x_t_1_shape=[84, 84, 3]):
         # Load image mean
         mean = np.load(os.path.join(mean_path))
+        self.mean = mean
         
         # Prepare data flow
         s_t, a_t, x_t_1 = _read_and_decode(directory, 

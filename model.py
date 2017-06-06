@@ -52,15 +52,14 @@ class ActionConditionalVideoPredictionModel(object):
         tf.summary.image('x_t_1', tf.cast(t * 255.0, tf.uint8), collections=['train']) 
 
     def _create_optimizer(self):
+        lr = self.optimizer_args['lr'] if self.optimizer_args else 1e-4
+
         with tf.variable_scope('optimize', reuse=not self.is_train) as scope:
             # Setup global_step, optimizer
             self.global_step = tf.get_variable('global_step', shape=(), initializer=tf.constant_initializer(0.0), trainable=False)
 
-            lr = self.optimizer_args['lr']
-
             self.learning_rate = tf.train.exponential_decay(lr, self.global_step, 1e5, 0.9, staircase=True)
             self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate, name='optimizer')
-            #self.train = self.optimizer.minimize(self.loss, global_step=self.global_step)
             
             # Compute gradient for weights, bias
             grads_vars = self.optimizer.compute_gradients(self.loss)
@@ -74,43 +73,40 @@ class ActionConditionalVideoPredictionModel(object):
                 tf.summary.histogram('grad_%s' % (var.op.name), grad, collections=['train'])
             grads_clip = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in grads_vars_mult]
             self.train = self.optimizer.apply_gradients(grads_clip, global_step=self.global_step)
-            
+             
             tf.summary.scalar("learning_rate", self.learning_rate, collections=['train'])
 
     def _create_encoder(self, x):
         # x: input image (tensor([batch_size, 84, 84, 12]))
-        with tf.variable_scope('enc', reuse=not self.is_train) as scope:
-            l = Conv2D(x, [6, 6], 64, 2, 'VALID', 'conv1')
-            l = ReLu(l, 'relu1')
-            l = Conv2D(l, [6, 6], 64, 2, 'SAME', 'conv2')
-            l = ReLu(l, 'relu2')
-            l = Conv2D(l, [6, 6], 64, 2, 'SAME', 'conv3')
-            l = ReLu(l, 'relu3')
-            l = FC(l, 1024, 'fc1')
-            l = ReLu(l, 'relu4')
-            l = FC(l, 2048, 'fc2', initializer=tf.random_uniform_initializer(minval=-1.0, maxval=1.0))
+        l = Conv2D(x, [6, 6], 64, 2, 'VALID', 'conv1')
+        l = ReLu(l, 'relu1')
+        l = Conv2D(l, [6, 6], 64, 2, 'SAME', 'conv2')
+        l = ReLu(l, 'relu2')
+        l = Conv2D(l, [6, 6], 64, 2, 'SAME', 'conv3')
+        l = ReLu(l, 'relu3')
+        l = FC(l, 1024, 'ip1')
+        l = ReLu(l, 'relu4')
+        l = FC(l, 2048, 'enc-factor', initializer=tf.random_uniform_initializer(minval=-1.0, maxval=1.0))
         return l
 
     def _create_action_embedding(self, act):
         # act: action input (tensor([batch_size, num_act])) (one-hot vector)
-        with tf.variable_scope('act-embed', reuse=not self.is_train) as scope:
-            act = tf.cast(act, tf.float32)
-            l = FC(act, 2048, 'act', initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
+        act = tf.cast(act, tf.float32)
+        l = FC(act, 2048, 'act-embed', initializer=tf.random_uniform_initializer(minval=-0.1, maxval=0.1))
         return l
     
     def _create_decoder(self, encode, act_embed):
         # encode: encode layer
         # act_embed: action embedding layer
-        with tf.variable_scope('dec', reuse=not self.is_train) as scope:
-            batch_size = tf.shape(encode)[0]
-            l = tf.multiply(encode, act_embed, name='merge')
-            l = FC(l, 1024, 'fc1')
-            l = FC(l, 64 * 10 * 10, 'fc2')
-            l = ReLu(l, 'relu1')
-            l = tf.reshape(l, [-1, 10, 10, 64], name='dec-reshape')
-            l = Deconv2D(l, [6, 6], [batch_size, 20, 20, 64], 64, 2, 'SAME', 'deconv1')
-            l = ReLu(l, 'relu2')
-            l = Deconv2D(l, [6, 6], [batch_size, 40, 40, 64], 64, 2, 'SAME', 'deconv2')
-            l = ReLu(l, 'relu3')
-            l = Deconv2D(l, [6, 6], [batch_size, 84, 84, NUM_CHANNELS], 3, 2, 'VALID', 'deconv3')
+        batch_size = tf.shape(encode)[0]
+        l = tf.multiply(encode, act_embed, name='merge')
+        l = FC(l, 1024, 'dec')
+        l = FC(l, 64 * 10 * 10, 'ip4')
+        l = ReLu(l, 'relu1')
+        l = tf.reshape(l, [-1, 10, 10, 64], name='dec-reshape')
+        l = Deconv2D(l, [6, 6], [batch_size, 20, 20, 64], 64, 2, 'SAME', 'deconv3')
+        l = ReLu(l, 'relu2')
+        l = Deconv2D(l, [6, 6], [batch_size, 40, 40, 64], 64, 2, 'SAME', 'deconv2')
+        l = ReLu(l, 'relu3')
+        l = Deconv2D(l, [6, 6], [batch_size, 84, 84, NUM_CHANNELS], 3, 2, 'VALID', 'x_hat-05')
         return l
