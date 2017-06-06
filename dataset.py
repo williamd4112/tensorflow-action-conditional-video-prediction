@@ -1,7 +1,12 @@
 import tensorflow as tf
 import numpy as np
 import logging
-import os
+import os, glob, cv2
+
+def _np_one_hot(x, n):
+    y = np.zeros([len(x), n])
+    y[np.arange(len(x)), x] = 1
+    return y
 
 def _read_and_decode(directory, s_t_shape, num_act, x_t_1_shape):
     filenames = tf.train.match_filenames_once('./%s/*.tfrecords' % (directory))
@@ -25,6 +30,7 @@ def _read_and_decode(directory, s_t_shape, num_act, x_t_1_shape):
 
     s_t = tf.cast(s_t, tf.float32)
     x_t_1 = tf.cast(x_t_1, tf.float32)
+
     a_t = tf.cast(features['a_t'], tf.int32)
     a_t = tf.one_hot(a_t, num_act)
 
@@ -55,6 +61,64 @@ class Dataset(object):
                 'a_t': self.a_t_batch,
                 'x_t_1': self.x_t_1_batch,
                 'mean': self.mean_const}
+
+class CaffeDataset(object):
+    '''
+        Used to load data with directory structure in original paper
+    '''
+    def __init__(self, dir, num_act, mean_path, mode='tf', num_frame=4, num_channel=3):
+        # dir: image data directory, each image should be named as %05d.png
+        # num_act: number of action in action space (only support discrete action)
+        # mean_path: mean image file path (NOTE: you must convert mean.binaryproto to npy file)
+        # mode: tf or caffe (differ in s, a format)
+        # num_frame: initial frame 
+        # num_channel: number of channel per frame
+        self.mean = np.load(mean_path)
+        self.num_act = num_act
+        self.dir = dir
+        self.mode = mode
+        self.num_frame = num_frame
+        self.num_channel = num_channel
+ 
+    def _process_frame_tf(self, s, img):
+        # s: state np array
+        # img: frame input
+        s[:, :, :-self.num_channel] = s[:, :, self.num_channel:]
+        s[:, :, -self.num_channel:] = img
+        return s
+
+    def _process_frame_caffe(self, s, img):
+        raise NotImplemented()             
+   
+    def __call__(self, max_iter=5):
+        with open(os.path.join(self.dir, 'act.log')) as act_log:
+            cnt_frame = 0
+
+            if self.mode == 'tf':
+                s = np.zeros([84, 84, self.num_frame * self.num_channel])
+            else:
+                s = np.zeros([1, self.num_frame, self.num_channel, 84, 84], dtype=np.flaot32)
+
+            a = np.zeros([self.num_frame, 1], dtype=np.int32)
+
+            for filename in sorted(glob.glob(os.path.join(self.dir, '*.png')))[:max_iter]:
+                img = cv2.imread(filename)
+
+                if self.mode == 'tf':
+                    s = self._process_frame_tf(s, img)
+                else:
+                    s = self._process_frame_caffe(s, img)
+
+                a[:, :-1] = a[:, 1:]
+                a[:, -1] = int(act_log.readline()[:-1])
+
+                if cnt_frame < self.num_frame:
+                    cnt_frame += 1
+                else:
+                    yield s, _np_one_hot(a[-1], self.num_act)
+
+            
+
             
            
 
