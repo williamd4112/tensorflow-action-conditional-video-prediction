@@ -18,11 +18,17 @@ def main(args):
     with tf.Graph().as_default() as graph:
         # Create dataset
         logging.info('Create data flow from %s' % args.train)
-        train_data = Dataset(directory=args.train, num_act=args.num_act, mean_path=args.mean, batch_size=args.batch_size, num_threads=4, capacity=10000)
+        train_data = Dataset(directory=args.train, 
+                    num_act=args.num_act, 
+                    mean_path=args.mean, 
+                    batch_size=args.batch_size, 
+                    num_threads=4, capacity=10000)
     
         # Create model
         logging.info('Create model for training [lr = %f, epochs = %d, batch_size = %d]' % (args.lr, args.epoch, args.batch_size) )
         model = ActionConditionalVideoPredictionModel(inputs=train_data(), num_act=args.num_act, optimizer_args={'lr': args.lr})
+
+        # Create prediction summary
         ground_truth_image = tf.cast(model.inputs['x_t_1'] * 255.0 + train_data.mean_const, tf.uint8)
         pred_image = tf.cast(model.output * 255.0 + train_data.mean_const, tf.uint8)
         tf.summary.image('ground', ground_truth_image, collections=['train'])
