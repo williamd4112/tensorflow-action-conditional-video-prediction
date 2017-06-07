@@ -6,8 +6,8 @@ import argparse
 import sys, os
 import logging
 
-from model import ActionConditionalVideoPredictionModel
-from dataset import Dataset
+from tfacvp.model import ActionConditionalVideoPredictionModel
+from tfacvp.dataset import Dataset
 
 def get_config(args):
     config = tf.ConfigProto()

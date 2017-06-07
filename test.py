@@ -8,9 +8,9 @@ import logging
 
 import cPickle as pickle
 
-from model import ActionConditionalVideoPredictionModel
-from dataset import Dataset, CaffeDataset
-from util import post_process
+from tfacvp.model import ActionConditionalVideoPredictionModel
+from tfacvp.dataset import Dataset, CaffeDataset
+from tfacvp.util import post_process
 
 def get_config(args):
     config = tf.ConfigProto()
