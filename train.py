@@ -19,12 +19,15 @@ def main(args):
         # Create dataset
         logging.info('Create data flow from %s' % args.train)
         train_data = Dataset(directory=args.train, num_act=args.num_act, mean_path=args.mean, batch_size=args.batch_size, num_threads=4, capacity=10000)
-        #test_data = Dataset(directory=args.test, num_act=args.num_act, mean_path=args.mean, batch_size=args.test_batch_size, num_threads=1, capacity=100)
     
         # Create model
         logging.info('Create model for training [lr = %f, epochs = %d, batch_size = %d]' % (args.lr, args.epoch, args.batch_size) )
         model = ActionConditionalVideoPredictionModel(inputs=train_data(), num_act=args.num_act, optimizer_args={'lr': args.lr})
-        #test_model = ActionConditionalVideoPredictionModel(test_data(), is_train=False)
+        ground_truth_image = tf.cast(model.inputs['x_t_1'] * 255.0 + train_data.mean_const, tf.uint8)
+        pred_image = tf.cast(model.output * 255.0 + train_data.mean_const, tf.uint8)
+        tf.summary.image('ground', ground_truth_image, collections=['train'])
+        tf.summary.image('pred', pred_image, collections=['train'])
+        
         # Create initializer
         init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         
@@ -38,8 +41,6 @@ def main(args):
         
         # Setup summary
         train_summary_op = tf.summary.merge_all('train')
-        test_summary_op = tf.summary.merge_all('test')
-        test_summary_writer = tf.summary.FileWriter(os.path.join(args.log, 'test'), graph)
 
         # Setup supervisor
         sv = tf.train.Supervisor(logdir=os.path.join(args.log, 'train'),
@@ -58,12 +59,6 @@ def main(args):
                     sv.summary_computed(sess, train_summary)
                 else:
                     sess.run([train_op])
-                '''      
-                if (epoch) % args.test_per_epoch == 0:
-                    test_loss, test_summary, global_step = sess.run([test_model.loss, test_summary_op, global_step_var])
-                    logging.info('Epoch %d: Testing L2 loss = %f' % (global_step, test_loss))
-                    test_summary_writer.add_summary(test_summary, (global_step))
-                '''
             sv.request_stop()
         
     
@@ -71,9 +66,9 @@ if __name__ == '__main__':
     logging.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('--log', help='summary directory', type=str, default='example/log')
-    parser.add_argument('--train', help='training data directory', type=str, default='example/train')
-    parser.add_argument('--test', help='testing data directory', type=str, default='example/test')
-    parser.add_argument('--mean', help='image mean path', type=str, default='example/mean.npy')
+    parser.add_argument('--train', help='training data directory', type=str, required=True)
+    parser.add_argument('--test', help='testing data directory', type=str, required=True)
+    parser.add_argument('--mean', help='image mean path', type=str, required=True)
     parser.add_argument('--num_act', help='num acts', type=int, required=True)
     parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
     parser.add_argument('--epoch', help='epoch', type=int, default=15000000)

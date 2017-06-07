@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import logging
-import os, glob, cv2
+import os, glob, cv2, re
 
 def _np_one_hot(x, n):
     y = np.zeros([len(x), n])
@@ -59,8 +59,7 @@ class Dataset(object):
     def __call__(self):        
         return {'s_t': self.s_t_batch,
                 'a_t': self.a_t_batch,
-                'x_t_1': self.x_t_1_batch,
-                'mean': self.mean_const}
+                'x_t_1': self.x_t_1_batch}
 
 class CaffeDataset(object):
     '''
@@ -73,46 +72,72 @@ class CaffeDataset(object):
         # mode: tf or caffe (differ in s, a format)
         # num_frame: initial frame 
         # num_channel: number of channel per frame
-        self.mean = np.load(mean_path)
         self.num_act = num_act
         self.dir = dir
         self.mode = mode
         self.num_frame = num_frame
         self.num_channel = num_channel
- 
-    def _process_frame_tf(self, s, img):
+        
+        pat = re.compile('.*npy')
+        if pat.match(mean_path):
+            logging.info('Load mean with npy')
+            self.mean = np.load(mean_path)
+        else:
+            import caffe
+            logging.info('Load mean with caffe')
+            with open(mean_path, 'rb') as mean_file:
+                mean_blob = caffe.proto.caffe_pb2.BlobProto()
+                mean_bin = mean_file.read()
+                mean_blob.ParseFromString(mean_bin)
+                self.mean = caffe.io.blobproto_to_array(mean_blob).squeeze()
+                
+                if self.mode == 'tf':
+                    self.mean = np.transpose(self.mean, [1, 2, 0])
+             
+    def _process_frame(self, s, img):
         # s: state np array
         # img: frame input
-        s[:, :, :-self.num_channel] = s[:, :, self.num_channel:]
-        s[:, :, -self.num_channel:] = img
+        img = img.astype(np.float32)
+        if self.mode == 'caffe':
+            img = np.transpose(img, [2, 0, 1])
+        img -= self.mean
+        img /= 255.0
+        if self.mode == 'tf':
+            s[:, :, :-self.num_channel] = s[:, :, self.num_channel:]
+            s[:, :, -self.num_channel:] = img
+        else:
+            s[:-1, :, :, :] = s[1:, :, :, :]
+            s[-1, :, :, :] = img       
         return s
 
-    def _process_frame_caffe(self, s, img):
-        raise NotImplemented()             
-   
-    def __call__(self, max_iter=5):
+    def _process_act(self, a, act):
+        if self.mode == 'tf':
+            a[:-1] = a[1:]
+            a[-1] = act
+        else:
+            a[:, :-1] = a[:, 1:]
+            a[:, -1] = act
+        return a
+  
+    def __call__(self, max_iter=None):
         with open(os.path.join(self.dir, 'act.log')) as act_log:
             cnt_frame = 0
-
+            lim = self.num_frame
             if self.mode == 'tf':
-                s = np.zeros([84, 84, self.num_frame * self.num_channel])
+                s = np.zeros([84, 84, self.num_frame * self.num_channel], dtype=np.float32)
+                a = np.zeros([self.num_frame, 1], dtype=np.int32)
             else:
-                s = np.zeros([1, self.num_frame, self.num_channel, 84, 84], dtype=np.flaot32)
-
-            a = np.zeros([self.num_frame, 1], dtype=np.int32)
-
+                s = np.zeros([self.num_frame, self.num_channel, 84, 84], dtype=np.float32)
+                a = np.zeros([self.num_frame, 1], dtype=np.int32)
+           
             for filename in sorted(glob.glob(os.path.join(self.dir, '*.png')))[:max_iter]:
+                logging.info('%s' % filename) 
                 img = cv2.imread(filename)
 
-                if self.mode == 'tf':
-                    s = self._process_frame_tf(s, img)
-                else:
-                    s = self._process_frame_caffe(s, img)
+                s = self._process_frame(s, img)
+                a = self._process_act(a, int(act_log.readline()[:-1]))
 
-                a[:, :-1] = a[:, 1:]
-                a[:, -1] = int(act_log.readline()[:-1])
-
-                if cnt_frame < self.num_frame:
+                if cnt_frame < lim:
                     cnt_frame += 1
                 else:
                     yield s, _np_one_hot(a[-1], self.num_act)

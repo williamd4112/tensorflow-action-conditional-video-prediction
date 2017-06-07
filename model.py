@@ -24,8 +24,7 @@ class ActionConditionalVideoPredictionModel(object):
         if inputs == None:
             self.inputs = {'s_t': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (NUM_CHANNELS * NUM_FRAMES)]),
                        'a_t': tf.placeholder(dtype=tf.int32, shape=[None, self.num_act]),
-                       'x_t_1': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (NUM_CHANNELS)]),
-                        'mean': tf.placeholder(dtype=tf.float32, shape=[84, 84, NUM_CHANNELS])}
+                       'x_t_1': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (NUM_CHANNELS)])}
         else:
             self.inputs = inputs
  
@@ -36,18 +35,15 @@ class ActionConditionalVideoPredictionModel(object):
 
     def _create_output(self):
         self.output = self.decode
-        output_img = tf.cast((self.output * 255.0) + self.inputs['mean'], tf.uint8)
-        ground_truth_img = tf.cast((self.inputs['x_t_1'] * 255.0) + (self.inputs['mean']), tf.uint8)
-
-        tf.summary.image('pred', output_img, collections=['train', 'test']) 
-        tf.summary.image('ground', ground_truth_img, collections=['train', 'test']) 
 
     def _create_loss(self): 
         with tf.variable_scope('loss', reuse=not self.is_train) as scope:
             t = self.inputs['x_t_1']
-            self.loss = tf.reduce_mean(tf.nn.l2_loss(self.output - t, name='l2'))
-            tf.summary.scalar("loss", self.loss, collections=['train', 'test'])
-        
+            lamb = 0.00001
+            penalty = tf.reduce_sum(lamb * tf.stack([tf.nn.l2_loss(var) for var in tf.trainable_variables()]), name='regularization') 
+            self.loss = tf.reduce_mean(tf.nn.l2_loss(self.output - t, name='l2') + penalty) 
+
+        tf.summary.scalar("loss", self.loss, collections=['train', 'test'])
         tf.summary.image('x_pred_t_1', tf.cast(self.decode * 255.0, tf.uint8), collections=['train']) 
         tf.summary.image('x_t_1', tf.cast(t * 255.0, tf.uint8), collections=['train']) 
 
@@ -70,7 +66,6 @@ class ActionConditionalVideoPredictionModel(object):
                     grads_vars_mult.append((grad * 2.0, var))
                 else: 
                     grads_vars_mult.append((grad, var))
-                tf.summary.histogram('grad_%s' % (var.op.name), grad, collections=['train'])
             grads_clip = [(tf.clip_by_value(grad, -0.1, 0.1), var) for grad, var in grads_vars_mult]
             self.train = self.optimizer.apply_gradients(grads_clip, global_step=self.global_step)
              

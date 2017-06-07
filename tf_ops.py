@@ -18,8 +18,8 @@ def Conv2D(x, filter_shape, out_dim, strides, padding, name, reuse=False):
         in_dim = x.get_shape()[-1]
         w = tf.get_variable('w', shape=filter_shape + [in_dim, out_dim], initializer=tf.contrib.layers.xavier_initializer_conv2d(uniform=True))
         b = tf.get_variable('b', shape=[out_dim], initializer=tf.constant_initializer(0.0))
-        l = tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding=padding)
-        l = tf.nn.bias_add(l, b)
+        l = tf.nn.conv2d(x, w, strides=[1, strides, strides, 1], padding=padding, name='conv2d')
+        l = tf.nn.bias_add(l, b, name='bias_add')
     return l
 
 def FC(x, out_dim, name, initializer=tf.contrib.layers.xavier_initializer(uniform=True), reuse=False):
@@ -32,7 +32,7 @@ def FC(x, out_dim, name, initializer=tf.contrib.layers.xavier_initializer(unifor
         in_dim = x.get_shape()[-1]
         w = tf.get_variable('w', shape=[in_dim, out_dim], initializer=initializer)
         b = tf.get_variable('b', shape=[out_dim], initializer=tf.constant_initializer(0.0))
-        l = tf.add(tf.matmul(x, w), b)
+        l = tf.add(tf.matmul(x, w), b, name='add')
     return l
 
 def Deconv2D(x, filter_shape, output_shape, out_dim, strides, padding, name, reuse=False):
@@ -47,7 +47,7 @@ def Deconv2D(x, filter_shape, output_shape, out_dim, strides, padding, name, reu
         in_dim = x.get_shape()[-1]
         w = tf.get_variable('w', shape=filter_shape + [out_dim, in_dim], initializer=tf.contrib.layers.xavier_initializer_conv2d(uniform=True))
         b = tf.get_variable('b', shape=[out_dim], initializer=tf.constant_initializer(0.0))
-        l = tf.nn.conv2d_transpose(x, w, output_shape=output_shape, strides=[1, strides, strides, 1], padding=padding)
-        l = tf.nn.bias_add(l, b)
+        l = tf.nn.conv2d_transpose(x, w, output_shape=output_shape, strides=[1, strides, strides, 1], padding=padding, name='deconv2d')
+        l = tf.nn.bias_add(l, b, name='bias_add')
     return l
 

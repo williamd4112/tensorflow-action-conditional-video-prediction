@@ -17,46 +17,35 @@ def get_config(args):
     config.gpu_options.allow_growth = True
     return config
 
-def load_caffe_model(path):
-    tf_ops = []
-    with tf.variable_scope('', reuse=True) as scope:
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-            for key in data:
-                val = data[key]
-                var = tf.get_variable(key)
-                tf_ops.append(tf.assign(var, data[key]))
-                logging.info('%s loaded with shape %s' % (key, val.shape))
-    return tf.group(*tf_ops)
+def load_caffe_model(x, path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+        w = tf.Variable(data['conv1/w'], dtype=tf.float32)
+        b = tf.Variable(data['conv1/b'], dtype=tf.float32)
+        l = tf.nn.conv2d(x, w, strides=[1, 2, 2, 1], padding='VALID', name='conv2d')
+        l = tf.nn.bias_add(l, b, name='bias_add')
+    return l
 
 def main(args):
     with tf.Graph().as_default() as graph:
         # Create dataset
         logging.info('Create data flow from %s' % args.data)
         caffe_dataset = CaffeDataset(dir=args.data, num_act=args.num_act, mean_path=args.mean)
-        
-        # Create model
-        logging.info('Create model from %s' % (args.load))
-        model = ActionConditionalVideoPredictionModel(inputs=None, num_act=args.num_act, is_train=False)
-
-        # Create initializer
-        init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-        
-        # Create weight load operation
-        load_op = load_caffe_model(args.load)
-         
+       
         # Config session
         config = get_config(args)
+
+        x = tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, 12])
+        op = load_caffe_model(x, args.load)
+
+        init = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
         
         # Start session
         with tf.Session(config=config) as sess:
-            logging.info('Loading')
-            sess.run(load_op)
-            op = graph.get_tensor_by_name(args.layer)
+            sess.run(init)
             i = 0
             for s, a in caffe_dataset(5):
-                pred_data = sess.run([op], feed_dict={model.inputs['s_t']: [s],
-                                                                model.inputs['a_t']: a})[0]
+                pred_data = sess.run([op], feed_dict={x: [s]})[0]
                 print pred_data.shape
                 np.save('tf-%03d.npy' % i, pred_data)
                 i += 1
@@ -69,7 +58,6 @@ if __name__ == '__main__':
     parser.add_argument('--mean', help='image mean path', type=str, required=True)
     parser.add_argument('--load', help='caffe-dumped model path', type=str, required=True)
     parser.add_argument('--num_act', help='num acts', type=int, required=True)
-    parser.add_argument('--layer', help='output layer', type=str, required=True)
     args = parser.parse_args()
 
     main(args)
