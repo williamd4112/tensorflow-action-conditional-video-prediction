@@ -7,8 +7,8 @@ source setup.sh
 # Train
 ## Atari
 ```
-./train_atari.sh ${game name} ${num_act} ${gpu id}
-e.g. ./train_atari.sh MsPacman-v0 9 0
+./train_atari.sh ${game name} ${num_act} ${colorspace [rgb|gray]} {gpu id}
+e.g. ./train_atari.sh MsPacman-v0 9 gray 0
 ```
 
 # Test
