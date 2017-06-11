@@ -1,10 +1,11 @@
 GAME=$1
 NUM_ACT=$2
-GPU=$3
+COLOR=$3
+GPU=$4
 TRAIN="${GAME}/train"
 TEST="${GAME}/test"
 MEAN="${GAME}/mean.npy"
-LOG="models/${GAME}-model"
+LOG="models/${GAME}-${COLOR}-model"
 
-export CUDA_VISIBLE_DEVICES=$3
-python train.py --train ${TRAIN} --test ${TEST} --mean ${MEAN} --num_act ${NUM_ACT} --log ${LOG} 
+export CUDA_VISIBLE_DEVICES=$GPU
+python train.py --train ${TRAIN} --test ${TEST} --mean ${MEAN} --num_act ${NUM_ACT} --color ${COLOR} --log ${LOG} 

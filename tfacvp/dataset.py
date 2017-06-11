@@ -38,22 +38,46 @@ def _read_and_decode(directory, s_t_shape, num_act, x_t_1_shape):
 
     return s_t, a_t, x_t_1
 
+def _transform_frame_color_space(x):
+    # x: [h, w, c]
+    return tf.image.rgb_to_grayscale(x)
+
+def _transform_state_color_space(s):
+    # s: [h, w, c*num_frame]
+    num_splits = int(s.shape[-1] / 3)    
+    return tf.concat([_transform_frame_color_space(x) for x in tf.split(s, num_splits, axis=2)], axis=2)
+
+def _transform_state_color_space_np(s):
+    # s: [h, w, c*num_frame]
+    num_splits = int(s.shape[-1] / 3)    
+    return np.concatenate([cv2.cvtColor(x, cv2.COLOR_RGB2GRAY)[:,:,np.newaxis] for x in np.split(s, num_splits, axis=2)], axis=2) 
+
 class Dataset(object):
     def __init__(self, directory, num_act, mean_path, num_threads=1, capacity=1e5, batch_size=32, 
-                scale=(1.0/255.0), s_t_shape=[84, 84, 12], x_t_1_shape=[84, 84, 3]):
+                scale=(1.0/255.0), s_t_shape=[84, 84, 12], x_t_1_shape=[84, 84, 3], colorspace='rgb'):
+        self.scale = scale
+        self.s_t_shape = s_t_shape
+        self.x_t_1_shape = x_t_1_shape
+        self.colorspace = colorspace
+
         # Load image mean
         mean = np.load(os.path.join(mean_path))
-        self.mean = mean
         
         # Prepare data flow
         s_t, a_t, x_t_1 = _read_and_decode(directory, 
                                         s_t_shape=s_t_shape,
                                         num_act=num_act,
                                         x_t_1_shape=x_t_1_shape)
+        if colorspace == 'gray':
+            s_t = _transform_state_color_space(s_t)
+            x_t_1 = _transform_frame_color_space(x_t_1)
+            mean = _transform_state_color_space_np(mean)
+        self.mean = mean
         self.s_t_batch, self.a_t_batch, self.x_t_1_batch = tf.train.shuffle_batch([s_t, a_t, x_t_1],
                                                             batch_size=batch_size, capacity=capacity,
                                                             min_after_dequeue=int(capacity*0.25),
                                                             num_threads=num_threads)
+
         # Subtract image mean (according to J Oh design)
         self.mean_const = tf.constant(mean, dtype=tf.float32)
         self.s_t_batch = (self.s_t_batch - tf.tile(self.mean_const, [1, 1, 4])) * scale

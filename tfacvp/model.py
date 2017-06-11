@@ -4,22 +4,23 @@ import re
 
 from tf_ops import ReLu, Conv2D, FC, Deconv2D
 
-NUM_CHANNELS = 3
-NUM_FRAMES = 4
-
 class ActionConditionalVideoPredictionModel(object):
-    def __init__(self, num_act, inputs=None, 
+    def __init__(self, num_act, num_channel=3, num_frame=4, inputs=None, 
                             is_train=True, 
                             with_summary=True, 
                             loss_args=None,
                             optimizer_args=None):
         # num_act: number of action in action space (only discrete)
+        # num_channel: number of channel in one frame
+        # num_frame: number of frame in one state
         # inputs: used to create model inputs (dict)
         # is_train: is training phase
         # loss_args: loss function arguments (e.g. lamb)
         # optimizer_args: optimizer arguments (e.g. optimizer type, learning rate, ...) (dict)
         self.is_train = is_train
         self.num_act = num_act
+        self.num_channel = num_channel
+        self.num_frame = num_frame
         self.optimizer_args = optimizer_args
         self.loss_args = loss_args
         self._create_input(inputs)
@@ -36,9 +37,9 @@ class ActionConditionalVideoPredictionModel(object):
         # inputs: if None, use tf.placeholder as input
         #         if not None, expected inputs is a dict
         if inputs == None:
-            self.inputs = {'s_t': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (NUM_CHANNELS * NUM_FRAMES)]),
+            self.inputs = {'s_t': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (self.num_channel * self.num_frame)]),
                        'a_t': tf.placeholder(dtype=tf.int32, shape=[None, self.num_act]),
-                       'x_t_1': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (NUM_CHANNELS)])}
+                       'x_t_1': tf.placeholder(dtype=tf.float32, shape=[None, 84, 84, (self.num_channel)])}
         else:
             assert type(inputs) is dict
             self.inputs = inputs
@@ -113,7 +114,7 @@ class ActionConditionalVideoPredictionModel(object):
         l = ReLu(l, 'relu2')
         l = Deconv2D(l, [6, 6], [batch_size, 40, 40, 64], 64, 2, 'SAME', 'deconv2')
         l = ReLu(l, 'relu3')
-        l = Deconv2D(l, [6, 6], [batch_size, 84, 84, NUM_CHANNELS], 3, 2, 'VALID', 'x_hat-05')
+        l = Deconv2D(l, [6, 6], [batch_size, 84, 84, self.num_channel], self.num_channel, 2, 'VALID', 'x_hat-05')
         return l
 
     def _create_summary(self):
@@ -131,9 +132,9 @@ class ActionConditionalVideoPredictionModel(object):
     
     def predict(self, sess, s, a):
         # sess: tf session
-        # s: state at t [batch_size, 84, 84, NUM_CHANNELS * NUM_FRAMES]
+        # s: state at t [batch_size, 84, 84, self.num_channel * self.num_frame]
         # a: action at t [batch_size, num_act]
-        assert s.shape[1:] == (84, 84, NUM_CHANNELS * NUM_FRAMES)
+        assert s.shape[1:] == (84, 84, self.num_channel * self.num_frame)
         assert len(a.shape) == 2
         assert a.shape[1] == self.num_act
  

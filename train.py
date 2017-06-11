@@ -9,6 +9,13 @@ import logging
 from tfacvp.model import ActionConditionalVideoPredictionModel
 from tfacvp.dataset import Dataset
 
+MODEL_NUM_CHANNELS_DEFS = {'rgb': 3, 'gray': 1}
+MODEL_NUM_FRAMES = 4
+DATASET_NUM_CHANNELS = 3
+DATASET_NUM_FRAMES = 4
+S_SHAPE = (84, 84, DATASET_NUM_CHANNELS * DATASET_NUM_FRAMES)
+X_SHAPE = (84, 84, DATASET_NUM_CHANNELS)
+
 def get_config(args):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -17,16 +24,23 @@ def get_config(args):
 def main(args):
     with tf.Graph().as_default() as graph:
         # Create dataset
-        logging.info('Create data flow from %s' % args.train)
+        logging.info('Create data flow from %s [colorspace = %s]' % (args.train, args.color))
         train_data = Dataset(directory=args.train, 
-                    num_act=args.num_act, 
+                    num_act=args.num_act,
                     mean_path=args.mean, 
-                    batch_size=args.batch_size, 
+                    batch_size=args.batch_size,
+                    s_t_shape=S_SHAPE,
+                    x_t_1_shape=X_SHAPE,
+                    colorspace=args.color, 
                     num_threads=4, capacity=10000)
     
         # Create model
         logging.info('Create model for training [lr = %f, epochs = %d, batch_size = %d]' % (args.lr, args.epoch, args.batch_size) )
-        model = ActionConditionalVideoPredictionModel(inputs=train_data(), num_act=args.num_act, optimizer_args={'lr': args.lr})
+        model = ActionConditionalVideoPredictionModel(inputs=train_data(), 
+                                                    num_act=args.num_act, 
+                                                    num_channel=MODEL_NUM_CHANNELS_DEFS[args.color],
+                                                    num_frame=MODEL_NUM_FRAMES,
+                                                    optimizer_args={'lr': args.lr})
 
         # Create prediction summary
         ground_truth_image = tf.cast(model.inputs['x_t_1'] * 255.0 + train_data.mean_const, tf.uint8)
@@ -76,6 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--test', help='testing data directory', type=str, required=True)
     parser.add_argument('--mean', help='image mean path', type=str, required=True)
     parser.add_argument('--num_act', help='num acts', type=int, required=True)
+    parser.add_argument('--color', help='colorspace', type=str, choices=['rgb', 'gray'], required=True)
     parser.add_argument('--lr', help='learning rate', type=float, default=1e-4)
     parser.add_argument('--epoch', help='epoch', type=int, default=15000000)
     parser.add_argument('--show_per_epoch', help='epoch', type=int, default=1000)
