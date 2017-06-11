@@ -15,7 +15,7 @@ def get_cv_image(img, mean, scale):
 
 def main(args):
     from tfacvp.model import ActionConditionalVideoPredictionModel
-    from tfacvp.util import post_process
+    from tfacvp.util import post_process_rgb
 
     with tf.Graph().as_default() as graph:    
         logging.info('Create model [num_act = %d] for testing' % (args.num_act))
