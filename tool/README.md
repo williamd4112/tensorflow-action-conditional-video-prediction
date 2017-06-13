@@ -1,7 +1,7 @@
 # How to prepare training data
 
 1. Modify your agent code
-2. Integrate ```episode_collector``` with your code. The following is an short example.
+2. Integrate [```episode_collector```](episode_collector.py) with your code. The following is an short example.
 ```python
 from episode_collector import EpisodeCollector
 import gym
@@ -41,7 +41,7 @@ Pong-v0/0100.tfrecords
 ```
 4. Use ```compute_mean.py``` to compute image mean
 ```
-python compute_mean.py Pong-v0-log Pong-v0-log/mean.npy
+python compute_mean.py Pong-v0 Pong-v0/mean.npy
 ```
 
 5. Split your training data into two directory, train and test
