@@ -9,6 +9,11 @@ source setup.sh
 ```
 ./train_atari.sh ${game name} ${num_act} ${colorspace [rgb|gray]} {gpu id}
 e.g. ./train_atari.sh MsPacman-v0 9 gray 0
+
+You can use tensorboard to monitor training process.
+e.g. tensorboard --port 6006 --logdir=train:models/Pong-v0/train,test:models/Pong-v0/test
+
+NOTE: I don't test model during training currently.
 ```
 
 # Test
