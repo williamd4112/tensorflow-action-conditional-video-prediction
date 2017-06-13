@@ -62,4 +62,4 @@ test/
   Pong-v0/0105.tfrecords
 ```
 
-NOTE: If your directory structure is same as the above, you can simply use ```train_atari.sh``` to train your agent. (Usage of ```train_atari.sh``` in here)
+NOTE: If your directory structure is same as the above, you can simply use ```train_atari.sh``` to train your agent. (Usage of ```train_atari.sh``` in [here](../README.md))
