@@ -37,7 +37,7 @@ Pong-v0/0001.tfrecords
 Pong-v0/0002.tfrecords
 Pong-v0/0003.tfrecords
 ...
-Pong-v0-log/0100.tfrecords
+Pong-v0/0100.tfrecords
 ```
 4. Use ```compute_mean.py``` to compute image mean
 ```
