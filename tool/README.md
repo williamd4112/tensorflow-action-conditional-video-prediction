@@ -1,7 +1,7 @@
 # How to prepare training data
 
 1. Modify your agent code
-2. Integrate episode_collector with your code. The following is an short example.
+2. Integrate ```episode_collector``` with your code. The following is an short example.
 ```python
 from episode_collector import EpisodeCollector
 import gym
