@@ -53,7 +53,7 @@ Pong-v0/
   train/0003.tfrecords
   ...
   train/0100.tfrecords
-Pong-v0/
+  ...
   test/0101.tfrecords
   test/0102.tfrecords
   test/0103.tfrecords
