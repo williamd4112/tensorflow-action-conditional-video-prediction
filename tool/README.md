@@ -46,20 +46,20 @@ python compute_mean.py Pong-v0 Pong-v0/mean.npy
 
 5. Split your training data into two directory, train and test
 ```
-train/
-  Pong-v0/0000.tfrecords
-  Pong-v0/0001.tfrecords
-  Pong-v0/0002.tfrecords
-  Pong-v0/0003.tfrecords
+Pong-v0/
+  train/0000.tfrecords
+  train/0001.tfrecords
+  train/0002.tfrecords
+  train/0003.tfrecords
   ...
-  Pong-v0/0100.tfrecords
-test/
-  Pong-v0/0101.tfrecords
-  Pong-v0/0102.tfrecords
-  Pong-v0/0103.tfrecords
-  Pong-v0/0104.tfrecords
+  train/0100.tfrecords
+Pong-v0/
+  test/0101.tfrecords
+  test/0102.tfrecords
+  test/0103.tfrecords
+  test/0104.tfrecords
   ...
-  Pong-v0/0105.tfrecords
+  test/0105.tfrecords
 ```
 
 NOTE: If your directory structure is same as the above, you can simply use ```train_atari.sh``` to train your agent. (Usage of ```train_atari.sh``` in [here](../README.md))
